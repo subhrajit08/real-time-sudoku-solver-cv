@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+venv/
+.venv/
+
+# PyTorch model (large binary)
+ocr/model.pt
+
+# Fonts (system fonts, not redistributable)
+ocr/fonts/*.ttf
+ocr/fonts/*.ttc
+ocr/fonts/*.fon
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Screenshots
+screenshot_*.png
+
+# Flask uploads
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Agents
+.agents/

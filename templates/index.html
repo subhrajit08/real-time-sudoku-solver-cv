@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sudoku Solver — CV Pipeline</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #00e676;
+      margin-bottom: 0.3rem;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: #1c1c1e;
+      border: 1px solid #2a2a2e;
+      border-radius: 12px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .upload-area {
+      border: 2px dashed #444;
+      border-radius: 8px;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+    .upload-area:hover { border-color: #00e676; }
+    .upload-area.dragover { border-color: #00e676; background: #1e2a1e; }
+
+    #file-input { display: none; }
+
+    .upload-label {
+      display: block;
+      font-size: 1rem;
+      color: #aaa;
+      cursor: pointer;
+    }
+    .upload-label span { color: #00e676; font-weight: 600; }
+
+    #preview {
+      margin-top: 1.5rem;
+      display: none;
+      text-align: center;
+    }
+    #preview img {
+      max-width: 100%;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+    .preview-label { font-size: 0.8rem; color: #666; margin-bottom: 0.4rem; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      margin-top: 1.5rem;
+      padding: 0.85rem;
+      background: #00e676;
+      color: #000;
+      font-weight: 700;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover:not(:disabled) { background: #00c853; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #status {
+      margin-top: 1.2rem;
+      font-size: 0.9rem;
+      color: #888;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    #result { margin-top: 2rem; display: none; }
+    #result h2 { font-size: 1.1rem; color: #00e676; margin-bottom: 1rem; }
+
+    .stats {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .stat-box {
+      flex: 1;
+      min-width: 120px;
+      background: #111;
+      border: 1px solid #2a2a2e;
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      text-align: center;
+    }
+    .stat-box .val { font-size: 1.4rem; font-weight: 700; color: #00e676; }
+    .stat-box .lbl { font-size: 0.75rem; color: #666; margin-top: 0.2rem; }
+
+    #solved-img { max-width: 100%; border-radius: 8px; border: 1px solid #333; }
+
+    .error-box {
+      margin-top: 1.2rem;
+      padding: 1rem;
+      background: #2a0a0a;
+      border: 1px solid #5c1a1a;
+      border-radius: 8px;
+      color: #ff6b6b;
+      font-size: 0.9rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Sudoku Solver</h1>
+  <p class="subtitle">OpenCV · Custom CNN · Backtracking · Flask</p>
+
+  <div class="card">
+    <!-- Upload area -->
+    <div class="upload-area" id="drop-zone">
+      <label class="upload-label" for="file-input">
+        Drop a Sudoku image here or <span>browse</span>
+      </label>
+      <input type="file" id="file-input" accept="image/*" />
+    </div>
+
+    <!-- Preview -->
+    <div id="preview">
+      <p class="preview-label">Input image</p>
+      <img id="preview-img" src="" alt="Preview" />
+    </div>
+
+    <button class="btn" id="solve-btn" disabled>Solve Sudoku</button>
+    <div id="status"></div>
+    <div class="error-box" id="error-box"></div>
+
+    <!-- Result -->
+    <div id="result">
+      <h2>✓ Solved</h2>
+      <div class="stats">
+        <div class="stat-box">
+          <div class="val" id="s-ocr">–</div>
+          <div class="lbl">OCR time (s)</div>
+        </div>
+        <div class="stat-box">
+          <div class="val" id="s-solve">–</div>
+          <div class="lbl">Solve time (s)</div>
+        </div>
+        <div class="stat-box">
+          <div class="val" id="s-total">–</div>
+          <div class="lbl">Total time (s)</div>
+        </div>
+        <div class="stat-box">
+          <div class="val" id="s-clues">–</div>
+          <div class="lbl">Clues found</div>
+        </div>
+      </div>
+      <img id="solved-img" src="" alt="Solved Sudoku" />
+    </div>
+  </div>
+
+  <script>
+    const fileInput  = document.getElementById('file-input');
+    const dropZone   = document.getElementById('drop-zone');
+    const preview    = document.getElementById('preview');
+    const previewImg = document.getElementById('preview-img');
+    const solveBtn   = document.getElementById('solve-btn');
+    const statusEl   = document.getElementById('status');
+    const resultEl   = document.getElementById('result');
+    const errorBox   = document.getElementById('error-box');
+    const solvedImg  = document.getElementById('solved-img');
+
+    let selectedFile = null;
+
+    // Click to browse
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // File chosen via dialog
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) loadFile(fileInput.files[0]);
+    });
+
+    // Drag & drop
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+    });
+
+    function loadFile(file) {
+      selectedFile = file;
+      const url = URL.createObjectURL(file);
+      previewImg.src = url;
+      preview.style.display = 'block';
+      solveBtn.disabled = false;
+      resultEl.style.display = 'none';
+      errorBox.style.display = 'none';
+      statusEl.textContent = '';
+    }
+
+    solveBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      solveBtn.disabled = true;
+      resultEl.style.display = 'none';
+      errorBox.style.display = 'none';
+      statusEl.textContent = 'Running CV pipeline…';
+
+      const formData = new FormData();
+      formData.append('image', selectedFile);
+
+      try {
+        const res = await fetch('/solve', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'Unknown error');
+        }
+
+        document.getElementById('s-ocr').textContent   = data.ocr_seconds;
+        document.getElementById('s-solve').textContent = data.solve_seconds;
+        document.getElementById('s-total').textContent = data.total_seconds;
+        document.getElementById('s-clues').textContent = data.clues_found;
+
+        solvedImg.src = 'data:image/png;base64,' + data.image_b64;
+        resultEl.style.display = 'block';
+        statusEl.textContent = '';
+      } catch (err) {
+        errorBox.textContent = '✗  ' + err.message;
+        errorBox.style.display = 'block';
+        statusEl.textContent = '';
+      } finally {
+        solveBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
