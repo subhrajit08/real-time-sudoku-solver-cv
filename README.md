@@ -7,6 +7,9 @@ perspective.
 **Stack:** OpenCV (grid detection & perspective transform) · PyTorch (CNN digit
 recognition) · Python (recursive backtracking solver) · Flask (web app)
 
+<img width="403" height="605" alt="image" src="https://github.com/user-attachments/assets/54b256ce-dbc9-4bbc-b821-9a02645cc943" />
+
+
 ---
 
 ## How it works
